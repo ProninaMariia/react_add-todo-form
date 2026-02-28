@@ -3,20 +3,26 @@ import './App.scss';
 import usersFromServer from './api/users';
 import todosFromServer from './api/todos';
 import { TodoList } from './components/TodoList/TodoList';
-import { Todo } from './components/TodoInfo/TodoInfo';
+import { Todo } from './types';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>(
-    todosFromServer.map(todo => {
-      const user = usersFromServer.find(
-        user => user.id === todo.userId,
-      );
+    todosFromServer
+      .map(todo => {
+        const u = usersFromServer.find(
+          u => u.id === todo.userId,
+        );
 
-      return {
-        ...todo,
-        user: user!,
-      };
-    }),
+        if (!u) {
+          return null; // пропускаємо todo без користувача
+        }
+
+        return {
+          ...todo,
+          user: u,
+        };
+      })
+      .filter((todo): todo is Todo => todo !== null),
   );
 
   const [title, setTitle] = useState('');
@@ -51,7 +57,7 @@ export const App: React.FC = () => {
     const newId = maxId + 1;
 
     const user = usersFromServer.find(
-      currentUser => currentUser.id === Number(userId),
+      u => u.id === Number(userId),
     );
 
     if (!user) {
