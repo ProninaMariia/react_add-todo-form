@@ -1,24 +1,24 @@
-import { useState, FormEvent, ChangeEvent } from 'react';
+import React, { useState, FormEvent, ChangeEvent } from 'react';
 import './App.scss';
 import usersFromServer from './api/users';
 import todosFromServer from './api/todos';
-
-type User = {
-  id: number;
-  name: string;
-  email: string;
-};
-
-type Todo = {
-  id: number;
-  title: string;
-  userId: number;
-  completed: boolean;
-  user: User;
-};
+import { TodoList } from './components/TodoList/TodoList';
+import { Todo } from './components/TodoInfo/TodoInfo';
 
 export const App: React.FC = () => {
-  const [todos, setTodos] = useState<Todo[]>(todosFromServer);
+  const [todos, setTodos] = useState<Todo[]>(
+    todosFromServer.map(todo => {
+      const user = usersFromServer.find(
+        user => user.id === todo.userId,
+      );
+
+      return {
+        ...todo,
+        user: user!,
+      };
+    }),
+  );
+
   const [title, setTitle] = useState('');
   const [userId, setUserId] = useState('');
   const [titleError, setTitleError] = useState('');
@@ -43,11 +43,21 @@ export const App: React.FC = () => {
       return;
     }
 
-    const newId = Math.max(...todos.map(todo => todo.id)) + 1;
+    const maxId =
+      todos.length > 0
+        ? Math.max(...todos.map(todo => todo.id))
+        : 0;
+
+    const newId = maxId + 1;
 
     const user = usersFromServer.find(
       currentUser => currentUser.id === Number(userId),
-    ) as User;
+    );
+
+    if (!user) {
+      setUserError('Please choose a valid user');
+      return;
+    }
 
     const newTodo: Todo = {
       id: newId,
@@ -63,16 +73,12 @@ export const App: React.FC = () => {
     setUserId('');
   };
 
-  const handleTitleChange = (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setTitle(event.target.value);
     setTitleError('');
   };
 
-  const handleUserChange = (
-    event: ChangeEvent<HTMLSelectElement>,
-  ) => {
+  const handleUserChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setUserId(event.target.value);
     setUserError('');
   };
@@ -90,12 +96,7 @@ export const App: React.FC = () => {
             onChange={handleTitleChange}
             placeholder="Enter todo title"
           />
-
-          {titleError && (
-            <span className="error">
-              {titleError}
-            </span>
-          )}
+          {titleError && <span className="error">{titleError}</span>}
         </div>
 
         <div className="field">
@@ -104,58 +105,22 @@ export const App: React.FC = () => {
             value={userId}
             onChange={handleUserChange}
           >
-            <option value="">
-              Choose a user
-            </option>
-
+            <option value="">Choose a user</option>
             {usersFromServer.map(user => (
-              <option
-                key={user.id}
-                value={user.id}
-              >
+              <option key={user.id} value={user.id}>
                 {user.name}
               </option>
             ))}
           </select>
-
-          {userError && (
-            <span className="error">
-              {userError}
-            </span>
-          )}
+          {userError && <span className="error">{userError}</span>}
         </div>
 
-        <button
-          type="submit"
-          data-cy="submitButton"
-        >
+        <button type="submit" data-cy="submitButton">
           Add
         </button>
       </form>
 
-      <section className="TodoList">
-        {todos.map(todo => (
-          <article
-            key={todo.id}
-            data-id={todo.id}
-            className={`TodoInfo ${
-              todo.completed ? 'TodoInfo--completed' : ''
-            }`}
-          >
-            <h2 className="TodoInfo__title">
-              {todo.title}
-            </h2>
-
-            <a
-              className="UserInfo"
-              href={`mailto:${todo.user.email}`}
-            >
-              {todo.user.name}
-            </a>
-          </article>
-        ))}
-      </section>
+      <TodoList todos={todos} />
     </div>
   );
 };
-
